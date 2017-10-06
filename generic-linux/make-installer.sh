@@ -83,11 +83,14 @@ for file in /usr/lib/x86_64-linux-gnu/gstreamer-1.0/*; do
   gst-inspect-1.0 --print-plugin-auto-install-info "$file" | grep -q "audio"
   stat=$?
   if [ "$stat" = "0" ]; then
-    gstreamerCommandLine=("${gstreamerCommandLine[@]}" "$(basename "$file")")
+    gstreamerCommandLine=("${gstreamerCommandLine[@]}" "-executable=build/lib/$(basename "$file")")
     cp "$file" build/lib/
   fi
 done
 set -e
+
+cp /usr/lib/x86_64-linux-gnu/gstreamer1.0/gstreamer-1.0/gst-plugin-scanner build/lib/
+gstreamerCommandLine=("${gstreamerCommandLine[@]}" "-executable=build/lib/gst-plugin-scanner")
 
 # extract linuxdeployqt since some environments (like travis) don't allow FUSE
 ./linuxdeployqt.AppImage --appimage-extract
