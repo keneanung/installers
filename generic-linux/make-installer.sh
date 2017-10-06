@@ -83,7 +83,7 @@ for file in /usr/lib/x86_64-linux-gnu/gstreamer-1.0/*; do
   gst-inspect-1.0 --print-plugin-auto-install-info "$file" | grep -q "audio"
   stat=$?
   if [ "$stat" = "0" ]; then
-    gstreamerCommandLine="$gstreamerCommandLine -executable=build/lib/$(basename $file)"
+    gstreamerCommandLine="$gstreamerCommandLine -executable='build/lib/$(basename "$file")'"
     cp "$file" build/lib/
   fi
 done
@@ -93,6 +93,7 @@ set -e
 ./linuxdeployqt.AppImage --appimage-extract
 
 echo "Generating AppImage"
+# shellcheck disable=SC2086
 ./squashfs-root/AppRun ./build/mudlet -appimage -executable=build/lib/rex_pcre.so -executable=build/lib/zip.so -executable=build/lib/luasql/sqlite3.so $gstreamerCommandLine
 
 # clean up extracted appimage
