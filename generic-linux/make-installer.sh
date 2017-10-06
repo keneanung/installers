@@ -73,11 +73,27 @@ done
 cp "$(ldd build/lib/rex_pcre.so | cut -d ' ' -f 3 | grep 'libpcre')" build/lib
 cp "$(ldd build/lib/zip.so | cut -d ' ' -f 3 | grep 'libz.so')" build/lib
 
+# find all "audio" related gstreamer plugins that are installed
+# and copy them over
+
+gstreamerCommandLine=""
+
+set +e # we need exit codes here, so we turn it off temporarily
+for file in /usr/lib/x86_64-linux-gnu/gstreamer-1.0/*; do
+  gst-inspect-1.0 --print-plugin-auto-install-info "$file" | grep -q "audio"
+  stat=$?
+  if [ "$stat" = "0" ]; then
+    gstreamerCommandLine="$gstreamerCommandLine -executable=build/lib/$(basename $file)"
+    cp "$file" build/lib/
+  fi
+done
+set -e
+
 # extract linuxdeployqt since some environments (like travis) don't allow FUSE
 ./linuxdeployqt.AppImage --appimage-extract
 
 echo "Generating AppImage"
-./squashfs-root/AppRun ./build/mudlet -appimage -executable=build/lib/rex_pcre.so -executable=build/lib/zip.so -executable=build/lib/luasql/sqlite3.so
+./squashfs-root/AppRun ./build/mudlet -appimage -executable=build/lib/rex_pcre.so -executable=build/lib/zip.so -executable=build/lib/luasql/sqlite3.so $gstreamerCommandLine
 
 # clean up extracted appimage
 rm -rf squashfs-root/
