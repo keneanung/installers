@@ -81,6 +81,10 @@ if [ "${LCF_NAME}" != "lcf" ]; then
   mv "${app}/Contents/MacOS/${LCF_NAME}" "${app}/Contents/MacOS/lcf"
 fi
 
+# generate binary translation files and bundle them in
+lrelease ../src/mudlet.pro
+cp "../translations/translated/*.qm" "${app}/Contents/Resources"
+
 # Edit some nice plist entries, don't fail if entries already exist
 /usr/libexec/PlistBuddy -c "Add CFBundleName string Mudlet" "${app}/Contents/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Add CFBundleDisplayName string Mudlet" "${app}/Contents/Info.plist" || true
