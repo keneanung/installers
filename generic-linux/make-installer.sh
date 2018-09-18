@@ -52,7 +52,7 @@ cp -r source/3rdparty/lcf build/
 # now copy Lua modules we need in
 # this should be improved not to be hardcoded
 mkdir -p build/lib/luasql
-for lib in lfs rex_pcre luasql/sqlite3 zip lua-utf8
+for lib in lfs rex_pcre luasql/sqlite3 zip lua-utf8 yajl
 do
   found=0
   for path in $(lua -e "print(package.cpath)" | tr ";" "\n")

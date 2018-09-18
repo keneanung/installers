@@ -54,6 +54,7 @@ luarocks-5.1 --local install LuaFileSystem
 luarocks-5.1 --local install lrexlib-pcre
 luarocks-5.1 --local install LuaSQL-SQLite3 SQLITE_DIR=/usr/local/opt/sqlite
 luarocks-5.1 --local install luautf8
+luarocks-5.1 --local install lua-yajl
 
 npm install -g ArmorText/node-appdmg#feature/background-hack
 
@@ -80,6 +81,7 @@ cp -r "../3rdparty/${LCF_NAME}" "${app}/Contents/MacOS"
 if [ "${LCF_NAME}" != "lcf" ]; then
   mv "${app}/Contents/MacOS/${LCF_NAME}" "${app}/Contents/MacOS/lcf"
 fi
+cp "${HOME}/.luarocks/lib/lua/5.1/yajl.so" "${app}/Contents/MacOS"
 
 # generate binary translation files and bundle them in
 lrelease ../src/mudlet.pro
