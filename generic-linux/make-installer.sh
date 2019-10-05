@@ -85,6 +85,8 @@ sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplat
 sudo cp "$(pkg-config --variable=libdir libssl)"/libssl.so.* \
         build/lib/
 
+ls -la build/lib/
+
 echo "Generating AppImage"
 ./squashfs-root/AppRun ./build/mudlet -appimage \
   -executable=build/lib/rex_pcre.so -executable=build/lib/zip.so \
