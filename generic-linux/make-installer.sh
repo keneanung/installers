@@ -82,7 +82,7 @@ sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplat
 
 # Bundle libssl.so.1.0.0 so Mudlet works on platforms that only distribute
 # OpenSSL 1.1
-sudo cp "$(pkg-config --variable=libdir libssl)"/libssl.so.1.0.0 \
+sudo cp "$(pkg-config --variable=libdir libssl)"/libssl.so.* \
         build/lib/
 
 echo "Generating AppImage"
