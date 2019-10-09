@@ -80,9 +80,9 @@ done
 sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so \
         /opt/qt512/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so || exit
 
-# Bundle libssl.so.1.0.0 so Mudlet works on platforms that only distribute
+# Bundle libssl.so so Mudlet works on platforms that only distribute
 # OpenSSL 1.1
-cp -L "$(pkg-config --variable=libdir libssl)"/libssl.so.* \
+cp -L "$(pkg-config --variable=libdir libssl)"/libssl.so* \
       build/lib/
 
 echo "Generating AppImage"
