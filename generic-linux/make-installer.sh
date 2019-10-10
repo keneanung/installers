@@ -82,7 +82,9 @@ sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplat
 
 # Bundle libssl.so so Mudlet works on platforms that only distribute
 # OpenSSL 1.1
-cp -L "$(pkg-config --variable=libdir libssl)"/libssl.so* \
+cp -L /usr/lib/x86_64-linux-gnu/libssl.so* \
+      build/lib/
+cp -L /usr/x86_64-linux-gnu/libssl.so* \
       build/lib/
 
 echo "Generating AppImage"
@@ -90,7 +92,7 @@ echo "Generating AppImage"
   -executable=build/lib/rex_pcre.so -executable=build/lib/zip.so \
   -executable=build/lib/luasql/sqlite3.so -executable=build/lib/yajl.so \
   -executable=build/lib/libssl.so.1.1 \
-  -executable=build/lib/libssl.so \
+  -executable=build/lib/libssl.so.1.0.0 \
   -extra-plugins=texttospeech/libqttexttospeech_flite.so,texttospeech/libqtexttospeech_speechd.so,platforminputcontexts/libcomposeplatforminputcontextplugin.so,platforminputcontexts/libibusplatforminputcontextplugin.so,platforminputcontexts/libfcitxplatforminputcontextplugin.so
 
 
