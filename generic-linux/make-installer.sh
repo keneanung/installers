@@ -89,9 +89,13 @@ sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplat
 # Bundle libssl.so so Mudlet works on platforms that only distribute
 # OpenSSL 1.1
 cp -L /usr/lib/x86_64-linux-gnu/libssl.so* \
-      build/lib/
+      build/lib/ || true
 cp -L /lib/x86_64-linux-gnu/libssl.so* \
-      build/lib/
+      build/lib/ || true
+if [ -z "$(ls build/lib/libssl.so*)" ]; then
+  echo "No OpenSSL libraries to copy found. Aborting..."
+  exit 1
+fi
 
 echo "Generating AppImage"
 ./squashfs-root/AppRun ./build/mudlet -appimage \
