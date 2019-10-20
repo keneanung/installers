@@ -81,10 +81,12 @@ done
 # extract linuxdeployqt since some environments (like travis) don't allow FUSE
 ./linuxdeployqt.AppImage --appimage-extract
 
-# a hack to get the Chinese input text plugin for Qt from the Ubuntu package into a location
-# linuxdeployqt will understand
-sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so \
-        /opt/qt512/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so || exit
+# a hack to get the Chinese input text plugin for Qt from the Ubuntu package
+# into the Qt for /opt package directory
+if [ -n "${QTDIR}" ]; then
+  sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so \
+          ${QTDIR}/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so || exit
+fi
 
 # Bundle libssl.so so Mudlet works on platforms that only distribute
 # OpenSSL 1.1
