@@ -85,7 +85,7 @@ done
 # into the Qt for /opt package directory
 if [ -n "${QTDIR}" ]; then
   sudo cp /usr/lib/x86_64-linux-gnu/qt5/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so \
-          ${QTDIR}/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so || exit
+          "${QTDIR}/plugins/platforminputcontexts/libfcitxplatforminputcontextplugin.so" || exit
 fi
 
 # Bundle libssl.so so Mudlet works on platforms that only distribute
