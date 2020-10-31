@@ -49,12 +49,14 @@ echo "Deploying ${app}"
 echo "Running brew update-reset"
 brew update-reset
 echo "Finished with brew update-reset"
-BREWS="sqlite3 lua@5.1 node luarocks"
+BREWS="sqlite3 lua lua@5.1 node luarocks"
 for i in $BREWS; do
+  echo "Checking if $i needs an upgrade..."
   brew outdated | grep -q "$i" && brew upgrade "$i"
 done
 for i in $BREWS; do
-  brew list | grep -q "$i" || brew install "$i"
+  echo "Checking if $i needs an install..."
+  brew list --formulae | grep -q "$i" || brew install "$i"
 done
 # create an alias to avoid the need to list the lua dir all the time
 # we want to expand the subshell only once (it's only temporary anyways)
@@ -79,6 +81,8 @@ luarocks-5.1 --local install lua-zip
 
 # Ensure Homebrew's npm is used, instead of an outdated one
 PATH=/usr/local/bin:$PATH
+# Add node path, as node seems to error when it's missing
+mkdir -p "$HOME"/.npm-global/lib
 npm install -g appdmg
 
 # copy in 3rd party framework first so there is the chance of things getting fixed if it doesn't exist
