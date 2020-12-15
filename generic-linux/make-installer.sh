@@ -6,6 +6,14 @@ set -e
 release=""
 ptb=""
 
+BUILD_DIR="source/build"
+SOURCE_DIR="source"
+
+if [ -n "$GITHUB_REPOSITORY" ] ; then
+  BUILD_DIR=$BUILD_FOLDER
+  SOURCE_DIR=$GITHUB_WORKSPACE
+fi
+
 # find out if we do a release build
 while getopts ":pr:" option; do
   if [ "${option}" = "r" ]; then
@@ -46,33 +54,34 @@ rm -f Mudlet*.AppImage
 
 # move the binary up to the build folder (they differ between qmake and cmake,
 # so we use find to find the binary
-find source/build/ -iname mudlet -type f -exec cp '{}' build/ \;
+find "$BUILD_DIR"/ -iname mudlet -type f -exec cp '{}' build/ \;
 # get mudlet-lua in there as well so linuxdeployqt bundles it
-cp -rf source/src/mudlet-lua build/
+cp -rf "$SOURCE_DIR"/src/mudlet-lua build/
 # copy Lua translations
 # only copy if folder exists
 mkdir -p build/translations/lua
-[ -d source/translations/lua ] && cp -rf source/translations/lua build/translations/
+[ -d "$SOURCE_DIR"/translations/lua ] && cp -rf "$SOURCE_DIR"/translations/lua build/translations/
 # and the dictionary files in case the user system doesn't have them (at a known
 # place)
-cp source/src/*.dic build/
-cp source/src/*.aff build/
+cp "$SOURCE_DIR"/src/*.dic build/
+cp "$SOURCE_DIR"/src/*.aff build/
 # and the .desktop file so linuxdeployqt can pilfer it for info
-cp source/mudlet{.desktop,.png,.svg} build/
+cp "$SOURCE_DIR"/mudlet{.desktop,.png,.svg} build/
 
 
-cp -r source/3rdparty/lcf build/
+cp -r "$SOURCE_DIR"/3rdparty/lcf build/
 
 # now copy Lua modules we need in
 # this should be improved not to be hardcoded
 mkdir -p build/lib/luasql
+mkdir -p build/lib/brimworks
 
-cp source/3rdparty/discord/rpc/lib/libdiscord-rpc.so build/lib/
+cp "$SOURCE_DIR"/3rdparty/discord/rpc/lib/libdiscord-rpc.so build/lib/
 
-for lib in lfs rex_pcre luasql/sqlite3 zip lua-utf8 yajl
+for lib in lfs rex_pcre luasql/sqlite3 brimworks/zip lua-utf8 yajl
 do
   found=0
-  for path in $(lua -e "print(package.cpath)" | tr ";" "\n")
+  for path in $(luarocks path --lr-cpath | tr ";" "\n")
   do
     changed_path=${path/\?/${lib}};
     if [ -e "${changed_path}" ]; then
