@@ -10,6 +10,18 @@ pgm=$(basename "$0")
 release=""
 ptb=""
 
+BUILD_DIR="source/build"
+SOURCE_DIR="source"
+
+# shellcheck disable=SC2154
+# If run via Github Actions, use Qt5_DIR for the custom Qt location - otherwise assume system default
+[ -n "$Qt5_DIR" ] && QT_DIR="${Qt5_DIR}" || QT_DIR="/usr/local/opt/qt/bin"
+
+if [ -n "$GITHUB_REPOSITORY" ] ; then
+  BUILD_DIR=$BUILD_FOLDER
+  SOURCE_DIR=$GITHUB_WORKSPACE
+fi
+
 # find out if we do a release or ptb build
 while getopts ":pr:" option; do
   if [ "${option}" = "r" ]; then
@@ -27,7 +39,7 @@ done
 # set path to find macdeployqt
 PATH=/usr/local/opt/qt/bin:$PATH
 
-cd source/build
+cd "${BUILD_DIR}"
 
 # get the app to package
 app=$(basename "${1}")
@@ -45,39 +57,42 @@ fi
 
 echo "Deploying ${app}"
 
-# install installer dependencies
-echo "Running brew update-reset"
-brew update-reset
-echo "Finished with brew update-reset"
-BREWS="sqlite3 lua lua@5.1 node luarocks"
-for i in $BREWS; do
-  echo "Checking if $i needs an upgrade..."
-  brew outdated | grep -q "$i" && brew upgrade "$i"
-done
-for i in $BREWS; do
-  echo "Checking if $i needs an install..."
-  brew list --formulae | grep -q "$i" || brew install "$i"
-done
+# install installer dependencies, except on Github where they're preinstalled at this point
+if [ -z "$GITHUB_REPOSITORY" ]; then
+  echo "Running brew update-reset"
+  brew update-reset
+  echo "Finished with brew update-reset"
+  BREWS="sqlite3 lua lua@5.1 node luarocks"
+  for i in $BREWS; do
+    echo "Checking if $i needs an upgrade..."
+    brew outdated | grep -q "$i" && brew upgrade "$i"
+  done
+  for i in $BREWS; do
+    echo "Checking if $i needs an install..."
+    brew list --formulae | grep -q "$i" || brew install "$i"
+  done
+
+  alias luarocks-5.1="luarocks --lua-dir='$(brew --prefix lua@5.1)'"
+  luarocks-5.1 --local install LuaFileSystem
+  luarocks-5.1 --local install lrexlib-pcre
+  luarocks-5.1 --local install LuaSQL-SQLite3 SQLITE_DIR=/usr/local/opt/sqlite
+  # Although it is called luautf8 here it builds a file called lua-utf8.so:
+  luarocks-5.1 --local install luautf8
+  luarocks-5.1 --local install lua-yajl
+  # This is the Brimworks one (same as lua-yajl) note the hyphen, the one without
+  # is the Kelper project one which has the, recently (2020), troublesome
+  # dependency on zziplib (libzzip), however to avoid clashes in the field
+  # it installs itself in brimworks subdirectory which must be accomodated
+  # in where we put it and how we "require" it:
+  luarocks-5.1 --local install lua-zip
+fi
+
 # create an alias to avoid the need to list the lua dir all the time
 # we want to expand the subshell only once (it's only temporary anyways)
 # shellcheck disable=2139
-alias luarocks-5.1="luarocks --lua-dir='$(brew --prefix lua@5.1)'"
 if [ ! -f "macdeployqtfix.py" ]; then
   wget https://raw.githubusercontent.com/aurelien-rainone/macdeployqtfix/master/macdeployqtfix.py
 fi
-luarocks-5.1 --local install LuaFileSystem
-luarocks-5.1 --local install lrexlib-pcre
-luarocks-5.1 --local install LuaSQL-SQLite3 SQLITE_DIR=/usr/local/opt/sqlite
-# Although it is called luautf8 here it builds a file called lua-utf8.so:
-luarocks-5.1 --local install luautf8
-luarocks-5.1 --local install lua-yajl
-# This is the Brimworks one (same as lua-yajl) note the hyphen, the one without
-# is the Kelper project one which has the, recently (2020), troublesome
-# dependency on zziplib (libzzip), however to avoid clashes in the field
-# it installs itself in brimworks subdirectory which must be accomodated
-# in where we put it and how we "require" it:
-luarocks-5.1 --local install lua-zip
-
 
 # Ensure Homebrew's npm is used, instead of an outdated one
 PATH=/usr/local/bin:$PATH
@@ -87,25 +102,28 @@ npm install -g appdmg
 
 # copy in 3rd party framework first so there is the chance of things getting fixed if it doesn't exist
 if [ ! -d "${app}/Contents/Frameworks/Sparkle.framework" ]; then
-  cp -r "../3rdparty/cocoapods/Pods/Sparkle/Sparkle.framework" "${app}/Contents/Frameworks"
+  mkdir -p "${app}/Contents/Frameworks/Sparkle.framework"
+  cp -r "${SOURCE_DIR}/3rdparty/cocoapods/Pods/Sparkle/Sparkle.framework" "${app}/Contents/Frameworks"
+  ls "${app}/Contents/Frameworks"
 fi
+
 # Bundle in Qt libraries
 macdeployqt "${app}"
 
 # fix unfinished deployment of macdeployqt
-python macdeployqtfix.py "${app}/Contents/MacOS/Mudlet" "/usr/local/opt/qt/bin"
+python macdeployqtfix.py "${app}/Contents/MacOS/Mudlet" "${QT_DIR}"
 
 # Bundle in dynamically loaded libraries
 cp "${HOME}/.luarocks/lib/lua/5.1/lfs.so" "${app}/Contents/MacOS"
 
 cp "${HOME}/.luarocks/lib/lua/5.1/rex_pcre.so" "${app}/Contents/MacOS"
 # rex_pcre has to be adjusted to load libpcre from the same location
-python macdeployqtfix.py "${app}/Contents/MacOS/rex_pcre.so" "/usr/local/opt/qt/bin"
+python macdeployqtfix.py "${app}/Contents/MacOS/rex_pcre.so" "${QT_DIR}"
 
 cp -r "${HOME}/.luarocks/lib/lua/5.1/luasql" "${app}/Contents/MacOS"
 cp /usr/local/opt/sqlite/lib/libsqlite3.0.dylib  "${app}/Contents/Frameworks/"
 # sqlite3 has to be adjusted to load libsqlite from the same location
-python macdeployqtfix.py "${app}/Contents/Frameworks/libsqlite3.0.dylib" "/usr/local/opt/qt/bin"
+python macdeployqtfix.py "${app}/Contents/Frameworks/libsqlite3.0.dylib" "${QT_DIR}"
 # need to adjust sqlite3.lua manually as it is a level lower than expected...
 install_name_tool -change "/usr/local/opt/sqlite/lib/libsqlite3.0.dylib" "@executable_path/../../Frameworks/libsqlite3.0.dylib" "${app}/Contents/MacOS/luasql/sqlite3.so"
 
@@ -116,24 +134,33 @@ cp "${HOME}/.luarocks/lib/lua/5.1/lua-utf8.so" "${app}/Contents/MacOS"
 # the executable:
 mkdir "${app}/Contents/MacOS/brimworks"
 cp "${HOME}/.luarocks/lib/lua/5.1/brimworks/zip.so" "${app}/Contents/MacOS/brimworks"
-python macdeployqtfix.py "${app}/Contents/MacOS/brimworks/zip.so" "/usr/local/opt/qt/bin"
+# Special case - libzip.5.dylib in Github Actions is located in this path
+if [ -n "$GITHUB_REPOSITORY" ] ; then
+  mkdir -p "/usr/local/lib/libzip.5.dylib.framework"
+  cp "/usr/local/lib/libzip.5.dylib" "/usr/local/lib/libzip.5.dylib.framework/libzip.5.dylib"
+fi
+python macdeployqtfix.py "${app}/Contents/MacOS/brimworks/zip.so" "/usr/local"
 
-cp "../3rdparty/discord/rpc/lib/libdiscord-rpc.dylib" "${app}/Contents/Frameworks"
+cp "${SOURCE_DIR}/3rdparty/discord/rpc/lib/libdiscord-rpc.dylib" "${app}/Contents/Frameworks"
 
-if [ -d "../3rdparty/lua_code_formatter" ]; then
+if [ -d "${SOURCE_DIR}/3rdparty/lua_code_formatter" ]; then
   # we renamed lcf at some point
   LCF_NAME="lua_code_formatter"
 else
   LCF_NAME="lcf"
 fi
-cp -r "../3rdparty/${LCF_NAME}" "${app}/Contents/MacOS"
+cp -r "${SOURCE_DIR}/3rdparty/${LCF_NAME}" "${app}/Contents/MacOS"
 if [ "${LCF_NAME}" != "lcf" ]; then
   mv "${app}/Contents/MacOS/${LCF_NAME}" "${app}/Contents/MacOS/lcf"
 fi
 
 cp "${HOME}/.luarocks/lib/lua/5.1/yajl.so" "${app}/Contents/MacOS"
 # yajl has to be adjusted to load libyajl from the same location
-python macdeployqtfix.py "${app}/Contents/MacOS/yajl.so" "/usr/local/opt/qt/bin"
+python macdeployqtfix.py "${app}/Contents/MacOS/yajl.so" "${QT_DIR}"
+if [ -n "$GITHUB_REPOSITORY" ] ; then
+  cp "/Users/runner/work/Mudlet/Mudlet/3rdparty/vcpkg/packages/yajl_x64-osx/lib/libyajl.2.dylib" "${app}/Contents/Frameworks/libyajl.2.dylib"
+  install_name_tool -change "/Users/runner/work/Mudlet/Mudlet/3rdparty/vcpkg/packages/yajl_x64-osx/lib/libyajl.2.dylib" "@executable_path/../Frameworks/libyajl.2.dylib" "${app}/Contents/MacOS/yajl.so"
+fi
 
 # Edit some nice plist entries, don't fail if entries already exist
 if [ -z "${ptb}" ]; then
@@ -176,18 +203,18 @@ fi
 cd ../../
 rm -f ~/Desktop/[mM]udlet*.dmg
 
-pwd
 # Modify appdmg config file according to the app file to package
-perl -pi -e "s|build/.*Mudlet.*\\.app|build/${app}|i" appdmg/mudlet-appdmg.json
+perl -pi -e "s|../source/build/.*Mudlet.*\\.app|${BUILD_DIR}/${app}|i" "${BUILD_DIR}/../installers/osx/appdmg/mudlet-appdmg.json"
+# Update icons to the correct type
 if [ -z "${ptb}" ]; then
-  perl -pi -e "s|icons/.*\\.icns|icons/mudlet_ptb.icns|i" appdmg/mudlet-appdmg.json
+  perl -pi -e "s|../source/src/icons/.*\\.icns|${SOURCE_DIR}/src/icons/mudlet_ptb.icns|i" "${BUILD_DIR}/../installers/osx/appdmg/mudlet-appdmg.json"
 else
   if [ -z "${release}" ]; then
-    perl -pi -e "s|icons/.*\\.icns|icons/mudlet_dev.icns|i" appdmg/mudlet-appdmg.json
+    perl -pi -e "s|../source/src/icons/.*\\.icns|${SOURCE_DIR}/src/icons/mudlet_dev.icns|i" "${BUILD_DIR}/../installers/osx/appdmg/mudlet-appdmg.json"
   else
-    perl -pi -e "s|icons/.*\\.icns|icons/mudlet.icns|i" appdmg/mudlet-appdmg.json
+    perl -pi -e "s|../source/src/icons/.*\\.icns|${SOURCE_DIR}/src/icons/mudlet.icns|i" "${BUILD_DIR}/../installers/osx/appdmg/mudlet-appdmg.json"
   fi
 fi
 
 # Last: build *.dmg file
-appdmg appdmg/mudlet-appdmg.json "${HOME}/Desktop/$(basename "${app%.*}").dmg"
+appdmg "${BUILD_DIR}/../installers/osx/appdmg/mudlet-appdmg.json" "${HOME}/Desktop/$(basename "${app%.*}").dmg"
