@@ -103,14 +103,15 @@ npm install -g appdmg
 # copy in 3rd party framework first so there is the chance of things getting fixed if it doesn't exist
 if [ ! -d "${app}/Contents/Frameworks/Sparkle.framework" ]; then
   mkdir -p "${app}/Contents/Frameworks/Sparkle.framework"
-  cp -r "${SOURCE_DIR}/3rdparty/cocoapods/Pods/Sparkle/Sparkle.framework" "${app}/Contents/Frameworks"
-  ls "${app}/Contents/Frameworks"
+  cp -R "${SOURCE_DIR}/3rdparty/cocoapods/Pods/Sparkle/Sparkle.framework" "${app}/Contents/Frameworks"
 fi
 
 # Bundle in Qt libraries
+echo "Running macdeployqt..."
 macdeployqt "${app}"
 
 # fix unfinished deployment of macdeployqt
+echo "Running macdeployqtfix..."
 python macdeployqtfix.py "${app}/Contents/MacOS/Mudlet" "${QT_DIR}"
 
 # Bundle in dynamically loaded libraries
@@ -196,7 +197,9 @@ fi
 # Sign everything now that we're done modifying contents of the .app file
 # Keychain is already setup in travis.osx.after_success.sh for us
 if [ -n "$IDENTITY" ] && security find-identity | grep -q "$IDENTITY"; then
-  codesign --deep -s "$IDENTITY" "${app}"
+  codesign --deep --force --sign "$IDENTITY" "${app}"
+  echo "Validating codesigning worked with codesign -vv --deep-verify:"
+  codesign -vv --deep-verify "${app}"
 fi
 
 # Generate final .dmg
