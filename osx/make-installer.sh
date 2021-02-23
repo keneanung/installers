@@ -194,6 +194,11 @@ fi
 /usr/libexec/PlistBuddy -c "Add SUAllowsAutomaticUpdates bool true" "${app}/Contents/Info.plist" || true
 /usr/libexec/PlistBuddy -c "Add SUAutomaticallyUpdate bool true" "${app}/Contents/Info.plist" || true
 
+# Enable HiDPI support
+/usr/libexec/PlistBuddy -c "Add NSPrincipalClass string NSApplication" "${app}/Contents/Info.plist" || true
+/usr/libexec/PlistBuddy -c "Add NSHighResolutionCapable string true" "${app}/Contents/Info.plist" || true
+
+
 # Sign everything now that we're done modifying contents of the .app file
 # Keychain is already setup in travis.osx.after_success.sh for us
 if [ -n "$IDENTITY" ] && security find-identity | grep -q "$IDENTITY"; then
